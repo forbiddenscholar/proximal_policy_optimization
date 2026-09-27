@@ -163,10 +163,10 @@ class Agent:
             values = vals_arr
             advantage = np.zeros(len(reward_arr), dtype=np.float32)
 
-            for t in range(len(reward_arr-1)):
+            for t in range(len(reward_arr) - 1):
                 discount = 1
                 a_t = 0
-                for k in range(t, len(reward_arr-1)):
+                for k in range(t, len(reward_arr) - 1):
                     a_t += discount*(reward_arr[k] +
                         self.gamma*values[k+1]* (1 - dones_arr[k]) -
                         values[k])
@@ -189,12 +189,12 @@ class Agent:
                 new_probs = dist.log_prob(actions)
                 prob_ratio = torch.exp(new_probs - old_probs)
 
-                weighted_probs = prob_ratio * advantage
-                weighted_clipped_probs = torch.clamp(prob_ratio, 1 - self.policy_clip, 1 + self.policy_clip) * advantage
+                weighted_probs = prob_ratio * advantage[batch]
+                weighted_clipped_probs = torch.clamp(prob_ratio, 1 - self.policy_clip, 1 + self.policy_clip) * advantage[batch]
 
                 actor_loss = -torch.min(weighted_probs, weighted_clipped_probs).mean()
 
-                returns = advantage + values
+                returns = advantage[batch] + values[batch]
                 critic_loss = (critic_values - returns)**2
                 critic_loss = critic_loss.mean()
 
