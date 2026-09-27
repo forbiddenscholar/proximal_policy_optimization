@@ -1,6 +1,8 @@
+from torch.distributions import Categorical
 import torch
 import numpy as np
 import os
+import torch.nn as nn
 import torch.optim as optim
 import torch.distributions.categorical as categorical
 
@@ -45,3 +47,37 @@ class PPO_memory:
         self.rewards = []
         self.log_probs = []
         self.dones = []
+
+class ActorNetwork(nn.Module):
+    def __init__(self, n_actions, input_dims, alpha,
+                    fc1_dims=256, fc2_dims=256, chkpt_dir='./chkpts/actor'):
+        super(ActorNetwork, self).__init__()
+
+        self.chkpt_dir = chkpt_dir
+        os.makedirs(self.chkpt_dir, exist_ok=True)
+        self.checkpoint_file = os.path.join(chkpt_dir, 'ppo_actor')
+
+        self.actor = nn.Sequential(
+            nn.Linear(*input_dims, fc1_dims),
+            nn.ReLU(),
+            nn.Linear(fc1_dims, fc2_dims),
+            nn.ReLU(),
+            nn.Linear(fc2_dims, n_actions),
+            nn.Softmax(dim=-1)
+        )
+
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
+    def forward(self, state):
+        dist = self.actor(state)
+        dist = Categorical(dist)
+
+        return dist
+
+    def save_checkpoint(self):
+        torch.save(self.state_dict(), self.checkpoint_file)
+    
+    def load_checkpoint(self):
+        self.load_state_dict(torch.load(self.checkpoint_file))
